@@ -1,5 +1,3 @@
-const { useLayoutEffect, useOptimistic } = require("react");
-
 // the 8px gap stops the object clipping into the floor div
 const TUBE_H= 400;
 const OBJ_H = 44;
@@ -204,3 +202,4 @@ function setIns ( t, on) {
   ins.className   = 'insight' + (on ? ' on' : '');
 }
 
+// sxfduhys zdiuxdf ioohjxdr ikjhdsdfjoipoixfcfpoiujopxdfgpoiujjxdfolujjsdfoiujsef ikkjc 
