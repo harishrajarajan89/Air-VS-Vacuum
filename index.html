@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Odd one out</title>
+</head>
+<body>
+    <div id="game-root">
+  <div id="hud">
+    <div class="hud-block"><span class="hud-label">Level</span><span class="hud-value" id="level-val">1</span></div>
+    <div class="timer-bar-wrap"><div id="timer-bar" style="width:100%"></div></div>
+    <div class="hud-block"><span class="hud-label">Time</span><span class="hud-value" id="timer-value">15</span></div>
+    <div style="width:1px;height:28px;background:#222;margin:0 0.5rem"></div>
+    <div class="hud-block"><span class="hud-label">Best</span><span class="hud-value" id="hs-val">0</span></div>
+  </div>
+  <div id="grid-wrap"><div id="grid"></div></div>
+
+  <div class="level-up-msg" id="level-msg">Level Up!</div>
+
+  <div class="overlay" id="start-overlay">
+    <h1>Odd One Out</h1>
+    <p class="sub">Find the square with a slightly different shade. Be quick — the clock is ticking!</p>
+    <p class="sub" style="margin-bottom:1.2rem;font-size:0.82rem;color:#555">
+      ✓ correct = +2s &nbsp;|&nbsp; ✗ wrong = −3s
+    </p>
+    <button class="btn-play" id="btn-start">Start Game</button>
+  </div>
+  <div class="overlay" id="gameover-overlay" style="display:none">
+    <h1>Game Over</h1>
+    <div class="big-score" id="final-score">0</div>
+    <div class="hs-label" id="go-hs-label">High score: 0</div>
+    <p class="sub" style="margin-bottom:1.5rem">You reached level <span id="final-level">1</span></p>
+    <button class="btn-play" id="btn-retry">Play Again</button>
+  </div>
+</div>
+</body>
+</html>
+
