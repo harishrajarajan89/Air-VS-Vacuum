@@ -1,205 +1,381 @@
-// the 8px gap stops the object clipping into the floor div
-const TUBE_H= 400;
-const OBJ_H = 44;
-const FLOOR = TUBE_H - OBJ_H - 8;
-const TOP = 14;    
-const G= 0.42;
-let airOn = false;
-let tick= 0;
-let raf =null;
+﻿const DROP_HEIGHT_METERS = 12;
+const SLOT_KEYS = ["a", "b"];
 
-// grabbing all the elements i need upfront so i dont query the DOM every frame
-const fObj = document.getElementById('feather-obj');
-const sObj  = document.getElementById('stone-obj');
-const fSplsh= document.getElementById('feather-splash');
-const sSplsh  = document.getElementById('stone-splash');
-const fSpd = document.getElementById('f-speed');
-const sSpd=document.getElementById('s-speed');
-const fDrg =document.getElementById('f-drag');
-const ins= document.getElementById('insight');
-const dragFW= document.getElementById('fvec-drag-f');
-const dragSW = document.getElementById('fvec-drag-s');
-const dArrF= document.getElementById('drag-arrow-f');
-const dArrS = document.getElementById('drag-arrow-s');
-const airParts = document.getElementById('air-particles');
-const featherG = document.getElementById('feather-g');
-
-// state object for both objects
-// y = position, vy = velocity, drift/driftV = sideways wobble for the feather
-// active = currently falling, landed = hit the floor
-let st = {
-  feather: { y: TOP, vy: 0, drift: 0, driftV: 0, active: false, landed: false },
-  stone:   { y: TOP, vy: 0, drift: 0, driftV: 0, active: false, landed: false },
+const PLANETS = {
+  earth: { label: "Earth", gravity: 9.8 },
+  moon: { label: "Moon", gravity: 1.6 },
+  mars: { label: "Mars", gravity: 3.7 },
+  jupiter: { label: "Jupiter", gravity: 24.8 }
 };
 
-// spawn 24 random dots inside the feather tube to represent air molecules
-// they start invisible (vacuum) and fade in when you switch to atmosphere
-(function () {
-  for (let i = 0; i < 24; i++) {
-    const d = document.createElement('div');
-    d.className = 'particle';
-    d.style.cssText = [
-      `left:${Math.random() * 100}%`,
-      `top:${Math.random() * 100}%`,
-      `width:${(1.5 + Math.random() * 2).toFixed(1)}px`,
-      `height:${(1.5 + Math.random() * 2).toFixed(1)}px`,
-      `background:rgba(${140 + (Math.random() * 60 | 0)},${180 + (Math.random() * 40 | 0)},${220 + (Math.random() * 35 | 0)},1)`,
-    ].join(';');
-    airParts.appendChild(d);
+const OBJECTS = {
+  leadBall: {
+    label: "Lead Ball",
+    drag: 0.02,
+    svg: `
+      <svg viewBox="0 0 88 88" aria-hidden="true">
+        <defs>
+          <radialGradient id="leadBallFill" cx="35%" cy="30%" r="65%">
+            <stop offset="0%" stop-color="#ecf3ff" />
+            <stop offset="45%" stop-color="#a8b5c5" />
+            <stop offset="100%" stop-color="#586473" />
+          </radialGradient>
+        </defs>
+        <circle cx="44" cy="44" r="25" fill="url(#leadBallFill)" />
+        <circle cx="35" cy="34" r="7" fill="rgba(255,255,255,0.38)" />
+      </svg>
+    `
+  },
+  basketball: {
+    label: "Basketball",
+    drag: 0.18,
+    svg: `
+      <svg viewBox="0 0 88 88" aria-hidden="true">
+        <circle cx="44" cy="44" r="26" fill="#d96e2d" />
+        <path d="M44 18C56 30 56 58 44 70" fill="none" stroke="#2a1208" stroke-width="2.8" />
+        <path d="M44 18C32 30 32 58 44 70" fill="none" stroke="#2a1208" stroke-width="2.8" />
+        <path d="M18 44H70" fill="none" stroke="#2a1208" stroke-width="2.8" />
+        <path d="M23 29C35 37 53 37 65 29" fill="none" stroke="#2a1208" stroke-width="2.8" />
+        <path d="M23 59C35 51 53 51 65 59" fill="none" stroke="#2a1208" stroke-width="2.8" />
+      </svg>
+    `
+  },
+  paperPlane: {
+    label: "Paper Plane",
+    drag: 0.42,
+    svg: `
+      <svg viewBox="0 0 88 88" aria-hidden="true">
+        <path d="M13 46L75 18L51 70L43 49L13 46Z" fill="#dce7f7" stroke="#8da3c0" stroke-width="2" />
+        <path d="M13 46L43 49L51 70" fill="#afc1da" />
+        <path d="M43 49L75 18" fill="none" stroke="#8da3c0" stroke-width="2" />
+      </svg>
+    `
+  },
+  bowlingBall: {
+    label: "Bowling Ball",
+    drag: 0.06,
+    svg: `
+      <svg viewBox="0 0 88 88" aria-hidden="true">
+        <defs>
+          <radialGradient id="bowlingBallFill" cx="38%" cy="28%" r="70%">
+            <stop offset="0%" stop-color="#767a88" />
+            <stop offset="40%" stop-color="#2a2e3c" />
+            <stop offset="100%" stop-color="#0d1017" />
+          </radialGradient>
+        </defs>
+        <circle cx="44" cy="44" r="26" fill="url(#bowlingBallFill)" />
+        <circle cx="36" cy="34" r="3.8" fill="#0a0d13" />
+        <circle cx="48" cy="31" r="3.8" fill="#0a0d13" />
+        <circle cx="42" cy="42" r="3.8" fill="#0a0d13" />
+      </svg>
+    `
   }
-})();
+};
 
-// runs when the toggle is flipped, switches between vacuum and atmosphere
-function toggleAir() {
-  airOn = document.getElementById('airToggle').checked;
-  const tag = document.getElementById('envTag');
-  tag.textContent = airOn ? 'Atmosphere' : 'Vacuum';
-  tag.className   = 'etag ' + (airOn ? 'tatm' : 'tvac');
-  airParts.className = airOn ? 'ap' : 'vp';
-  // hide the drag arrows when going back to vacuum
-  if (!airOn) {
-    dragFW.style.opacity = '0';
-    dragSW.style.opacity = '0';
+const state = {
+  planet: "earth",
+  environment: "vacuum",
+  running: false,
+  dropStart: 0,
+  elapsed: 0,
+  rafId: null,
+  objects: {
+    a: { key: "paperPlane", impactShown: false },
+    b: { key: "bowlingBall", impactShown: false }
   }
-}
+};
 
-// drop button - only activates objects that havent landed yet
-// so you can drop mid-reset without breaking anything
-function dropBoth() {
-  for (const n of ['feather', 'stone']) {
-    if (!st[n].landed) st[n].active = true;
-  }
-  if (!raf) raf = requestAnimationFrame(loop);
-  setIns('');
-}
-
-// puts everything back to the start
-function resetAll() {
-  cancelAnimationFrame(raf);
-  raf  = null;
-  tick = 0;
-
-  for (const n of ['feather', 'stone']) {
-    st[n] = { y: TOP, vy: 0, drift: 0, driftV: 0, active: false, landed: false };
-  }
-
-  posF(TOP, 0);
-  posS(TOP);
-  fSplsh.style.opacity = '0';
-  sSplsh.style.opacity = '0';
-  dragFW.style.opacity = '0';
-  dragSW.style.opacity = '0';
-  fSpd.textContent = '0.00';
-  sSpd.textContent = '0.00';
-  fDrg.textContent = '0.00';
-  setIns('');
-  if (featherG) featherG.setAttribute('transform', 'translate(22,22)');
-}
-
-// moves the feather and tilts the SVG based on how far it drifted sideways
-function posF(y, drift) {
-  fObj.style.top       = y + 'px';
-  fObj.style.left      = `calc(50% + ${drift.toFixed(1)}px)`;
-  fObj.style.transform = 'translateX(-50%)';
-  if (featherG) featherG.setAttribute('transform', `translate(22,22) rotate(${(drift * 2.5).toFixed(1)})`);
-}
-
-// stone just moves straight down, no drift
-function posS(y) {
-  sObj.style.top       = y + 'px';
-  sObj.style.left      = '50%';
-  sObj.style.transform = 'translateX(-50%)';
-}
-
-// resizes the Fr arrow to show how much drag is happening
-// longer arrow = more air resistance
-function setDragArrow(svgEl, wrapEl, size) {
-  const h  = Math.max(6, Math.min(44, size));
-  const ln = svgEl.querySelector('line');
-  svgEl.setAttribute('height', h + 4);
-  if (ln) { ln.setAttribute('y1', h + 2); ln.setAttribute('y2', 4); }
-  wrapEl.style.opacity = size > 0.5 ? '1' : '0';
-}
-
-// the main physics loop, called every frame by requestAnimationFrame
-// does gravity + drag then updates 
-function loop() {
-  tick++;
-  let any = false;
-  const f = st.feather;
-  const s = st.stone;
-
-  // feather drag is 0.11 because it has a huge surface area
-  if (f.active && !f.landed) {
-    any = true;
-    const drag = airOn ? 0.11 : 0;
-    f.vy += G;
-    f.vy *= (1 - drag);
-
-    if (airOn) {
-      f.driftV += Math.sin(tick * 0.09) * 0.55;
-      f.driftV *= 0.88;
-      f.drift  += f.driftV;
-      f.drift   = Math.max(-26, Math.min(26, f.drift)); // clamp so it doesnt fly off screen
-    } else {
-      f.drift = 0;
+const elements = {
+  planetSelect: document.getElementById("planetSelect"),
+  airToggle: document.getElementById("airToggle"),
+  dropButton: document.getElementById("dropButton"),
+  resetButton: document.getElementById("resetButton"),
+  envTag: document.getElementById("envTag"),
+  planetBadge: document.getElementById("planetBadge"),
+  gravityBadge: document.getElementById("gravityBadge"),
+  modelBadge: document.getElementById("modelBadge"),
+  planetReadout: document.getElementById("planetReadout"),
+  environmentReadout: document.getElementById("environmentReadout"),
+  gravityReadout: document.getElementById("gravityReadout"),
+  heightBadge: document.getElementById("heightBadge"),
+  timeReadout: document.getElementById("timeReadout"),
+  insight: document.getElementById("insight"),
+  slots: {
+    a: {
+      select: document.getElementById("objectASelect"),
+      name: document.getElementById("objectAName"),
+      drag: document.getElementById("objectADrag"),
+      tube: document.getElementById("tubeA"),
+      atmosphere: document.getElementById("tubeAtmosphereA"),
+      object: document.getElementById("objectA"),
+      visual: document.getElementById("objectAVisual"),
+      impact: document.getElementById("impactA"),
+      dataName: document.getElementById("dataNameA"),
+      velocity: document.getElementById("velocityA"),
+      height: document.getElementById("heightA"),
+      accel: document.getElementById("accelA"),
+      status: document.getElementById("statusA")
+    },
+    b: {
+      select: document.getElementById("objectBSelect"),
+      name: document.getElementById("objectBName"),
+      drag: document.getElementById("objectBDrag"),
+      tube: document.getElementById("tubeB"),
+      atmosphere: document.getElementById("tubeAtmosphereB"),
+      object: document.getElementById("objectB"),
+      visual: document.getElementById("objectBVisual"),
+      impact: document.getElementById("impactB"),
+      dataName: document.getElementById("dataNameB"),
+      velocity: document.getElementById("velocityB"),
+      height: document.getElementById("heightB"),
+      accel: document.getElementById("accelB"),
+      status: document.getElementById("statusB")
     }
+  }
+};
 
-    f.y += f.vy;
-    if (f.y >= FLOOR) { f.y = FLOOR; f.landed = true; f.active = false; splash('feather'); }
-    posF(f.y, f.drift);
+function formatNumber(value, digits = 2) {
+  return value.toFixed(digits);
+}
 
-    fSpd.textContent = (f.vy * 0.18).toFixed(2);
-    const dm = airOn ? Math.min(1, f.vy * drag * 12) : 0;
-    fDrg.textContent= dm.toFixed(2);
+function getPlanet() {
+  return PLANETS[state.planet];
+}
 
-    if (airOn) { dragFW.style.opacity = '1'; setDragArrow(dArrF, dragFW, dm * 38); }
-    else dragFW.style.opacity='0';
+function getObject(slotKey) {
+  return OBJECTS[state.objects[slotKey].key];
+}
+
+function getDrag(slotKey) {
+  return state.environment === "air" ? getObject(slotKey).drag : 0;
+}
+
+function getNetAcceleration(slotKey) {
+  const gravity = getPlanet().gravity;
+  return gravity * (1 - getDrag(slotKey));
+}
+
+function getImpactTime(slotKey) {
+  const accel = getNetAcceleration(slotKey);
+  return Math.sqrt((2 * DROP_HEIGHT_METERS) / accel);
+}
+
+function sampleState(slotKey, elapsedSeconds) {
+  const accel = getNetAcceleration(slotKey);
+  const impactTime = getImpactTime(slotKey);
+  const clampedTime = Math.min(elapsedSeconds, impactTime);
+  const distanceFallen = 0.5 * accel * clampedTime * clampedTime;
+  const height = Math.max(DROP_HEIGHT_METERS - distanceFallen, 0);
+  const velocity = accel * clampedTime;
+
+  return {
+    accel,
+    impactTime,
+    distanceFallen,
+    height,
+    velocity,
+    landed: elapsedSeconds >= impactTime
+  };
+}
+
+function getStagePosition(slotKey, heightMeters) {
+  const slot = elements.slots[slotKey];
+  const tubeHeight = slot.tube.clientHeight;
+  const objectHeight = slot.object.offsetHeight || 88;
+  const topPadding = 18;
+  const bottomPadding = 18;
+  const travel = tubeHeight - objectHeight - topPadding - bottomPadding;
+  const distanceRatio = (DROP_HEIGHT_METERS - heightMeters) / DROP_HEIGHT_METERS;
+  return topPadding + travel * distanceRatio;
+}
+
+function showImpact(slotKey, active) {
+  const impact = elements.slots[slotKey].impact;
+  impact.classList.toggle("active", active);
+}
+
+function updateObjectSelection(slotKey) {
+  const slot = elements.slots[slotKey];
+  const objectDef = getObject(slotKey);
+
+  slot.visual.innerHTML = objectDef.svg;
+  slot.name.textContent = objectDef.label;
+  slot.drag.textContent = `Cd ${formatNumber(objectDef.drag)}`;
+  slot.dataName.textContent = objectDef.label;
+}
+
+function updateBenchReadouts() {
+  const planet = getPlanet();
+  const airEnabled = state.environment === "air";
+
+  elements.envTag.textContent = airEnabled ? "Air" : "Vacuum";
+  elements.planetBadge.textContent = `Planet: ${planet.label}`;
+  elements.gravityBadge.textContent = `${formatNumber(planet.gravity)} m/s^2`;
+  elements.modelBadge.textContent = airEnabled ? "Simple drag model" : "Ideal vacuum";
+  elements.planetReadout.textContent = planet.label;
+  elements.environmentReadout.textContent = airEnabled ? "Air" : "Vacuum";
+  elements.gravityReadout.textContent = `${formatNumber(planet.gravity)} m/s^2`;
+  elements.heightBadge.textContent = `${formatNumber(DROP_HEIGHT_METERS)} m`;
+
+  SLOT_KEYS.forEach((slotKey) => {
+    elements.slots[slotKey].atmosphere.classList.toggle("active", airEnabled);
+  });
+}
+
+function updateInsight() {
+  const planet = getPlanet();
+  const airEnabled = state.environment === "air";
+  const sampleA = sampleState("a", 0);
+  const sampleB = sampleState("b", 0);
+  const objectA = getObject("a");
+  const objectB = getObject("b");
+
+  if (!airEnabled) {
+    elements.insight.textContent =
+      `Vacuum mode removes drag entirely, so ${objectA.label} and ${objectB.label} both use a = ${formatNumber(planet.gravity)} m/s^2 and reach the floor together.`;
+    return;
   }
 
-  // stone drag is only 0.018, dense and small so air will not affects it
-  if (s.active && !s.landed) {
-    any = true;
-    const drag = airOn ? 0.018 : 0;
-    s.vy += G;
-    s.vy *= (1 - drag);
-    s.y  += s.vy;
+  elements.insight.textContent =
+    `${objectA.label} uses Cd ${formatNumber(objectA.drag)} for a_eff = ${formatNumber(sampleA.accel)} m/s^2, while ${objectB.label} uses Cd ${formatNumber(objectB.drag)} for a_eff = ${formatNumber(sampleB.accel)} m/s^2.`;
+}
 
-    if (s.y >= FLOOR) { s.y = FLOOR; s.landed = true; s.active = false; splash('stone'); }
-    posS(s.y);
-    sSpd.textContent = (s.vy * 0.18).toFixed(2);
+function updateTelemetry(slotKey, sample, elapsedSeconds) {
+  const slot = elements.slots[slotKey];
+  const status = !state.running && elapsedSeconds === 0
+    ? "Ready"
+    : sample.landed
+      ? "Landed"
+      : "Falling";
 
-    if (airOn && !s.landed) { dragSW.style.opacity = '1'; setDragArrow(dArrS, dragSW, Math.min(1, s.vy * drag * 8) * 16); }
-    else dragSW.style.opacity = '0';
+  slot.velocity.textContent = `${formatNumber(sample.velocity)} m/s`;
+  slot.height.textContent = `${formatNumber(sample.height)} m`;
+  slot.accel.textContent = `${formatNumber(sample.accel)} m/s^2`;
+  slot.status.textContent = status;
+}
+
+function renderFrame(elapsedSeconds) {
+  elements.timeReadout.textContent = `${formatNumber(elapsedSeconds)} s`;
+
+  SLOT_KEYS.forEach((slotKey) => {
+    const slot = elements.slots[slotKey];
+    const sample = sampleState(slotKey, elapsedSeconds);
+    const yPosition = getStagePosition(slotKey, sample.height);
+
+    slot.object.style.top = `${yPosition}px`;
+    updateTelemetry(slotKey, sample, elapsedSeconds);
+
+    if (sample.landed && !state.objects[slotKey].impactShown) {
+      state.objects[slotKey].impactShown = true;
+      showImpact(slotKey, true);
+      window.setTimeout(() => showImpact(slotKey, false), 220);
+    }
+  });
+}
+
+function resetSimulation() {
+  state.running = false;
+  state.elapsed = 0;
+  state.dropStart = 0;
+
+  if (state.rafId) {
+    cancelAnimationFrame(state.rafId);
+    state.rafId = null;
   }
 
-  if (any) raf = requestAnimationFrame(loop);
-  else { raf = null; done(); }
+  SLOT_KEYS.forEach((slotKey) => {
+    state.objects[slotKey].impactShown = false;
+    showImpact(slotKey, false);
+  });
+
+  renderFrame(0);
 }
 
-// shows the impact burst for 750ms
-function splash(n) {
-  const el = document.getElementById(n + '-splash');
-  el.style.opacity = '1';
-  setTimeout(() => el.style.opacity ='0',750);
-}
+function updateLandingInsight() {
+  const airEnabled = state.environment === "air";
+  const objectA = getObject("a");
+  const objectB = getObject("b");
+  const impactA = getImpactTime("a");
+  const impactB = getImpactTime("b");
 
-// called once both objects have landed shows the explanation
-function done() {
-  const f = st.feather;
-  const s = st.stone;
-  if (f.landed && s.landed) {
-    setIns(
-      airOn
-        ? 'The feather has a large surface area — air molecules push back hard against it (Fr), drastically slowing it down. The dense stone cuts through with almost no drag.'
-        : 'Both objects hit the ground at exactly the same time! In a vacuum, gravity gives every object the same acceleration (g = 9.8 m/s²) regardless of mass.',
-      true
-    );
+  if (!airEnabled) {
+    elements.insight.textContent =
+      `${objectA.label} and ${objectB.label} landed together in ${formatNumber(impactA)} s because vacuum mode keeps the acceleration identical.`;
+    return;
   }
-}
-function setIns ( t, on) {
-  ins.textContent = t;
-  ins.className   = 'insight' + (on ? ' on' : '');
+
+  const slower = impactA > impactB ? objectA.label : objectB.label;
+  elements.insight.textContent =
+    `${objectA.label} lands in ${formatNumber(impactA)} s and ${objectB.label} lands in ${formatNumber(impactB)} s. ${slower} stays in the air longer because its drag coefficient reduces the net acceleration more strongly.`;
 }
 
-// sxfduhys zdiuxdf ioohjxdr ikjhdsdfjoipoixfcfpoiujopxdfgpoiujjxdfolujjsdfoiujsef ikkjc 
+function loop(timestamp) {
+  state.elapsed = (timestamp - state.dropStart) / 1000;
+  renderFrame(state.elapsed);
+
+  const allLanded = SLOT_KEYS.every((slotKey) => sampleState(slotKey, state.elapsed).landed);
+
+  if (allLanded) {
+    state.running = false;
+    state.rafId = null;
+    updateLandingInsight();
+    return;
+  }
+
+  state.rafId = requestAnimationFrame(loop);
+}
+
+function dropObjects() {
+  if (state.running) {
+    return;
+  }
+
+  SLOT_KEYS.forEach((slotKey) => {
+    state.objects[slotKey].impactShown = false;
+    showImpact(slotKey, false);
+  });
+
+  updateInsight();
+  state.running = true;
+  state.dropStart = performance.now();
+  state.rafId = requestAnimationFrame(loop);
+}
+
+function applyControlChange() {
+  state.planet = elements.planetSelect.value;
+  state.environment = elements.airToggle.checked ? "air" : "vacuum";
+  state.objects.a.key = elements.slots.a.select.value;
+  state.objects.b.key = elements.slots.b.select.value;
+
+  SLOT_KEYS.forEach(updateObjectSelection);
+  updateBenchReadouts();
+  updateInsight();
+  resetSimulation();
+}
+
+function bindEvents() {
+  elements.dropButton.addEventListener("click", dropObjects);
+  elements.resetButton.addEventListener("click", () => {
+    updateInsight();
+    resetSimulation();
+  });
+
+  elements.planetSelect.addEventListener("change", applyControlChange);
+  elements.airToggle.addEventListener("change", applyControlChange);
+  elements.slots.a.select.addEventListener("change", applyControlChange);
+  elements.slots.b.select.addEventListener("change", applyControlChange);
+  window.addEventListener("resize", () => renderFrame(state.elapsed));
+}
+
+function init() {
+  elements.slots.a.select.value = state.objects.a.key;
+  elements.slots.b.select.value = state.objects.b.key;
+
+  SLOT_KEYS.forEach(updateObjectSelection);
+  updateBenchReadouts();
+  updateInsight();
+  bindEvents();
+  resetSimulation();
+}
+
+init();
