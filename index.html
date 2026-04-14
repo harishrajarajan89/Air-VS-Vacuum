@@ -1,220 +1,268 @@
-<!-- styles are in the separate css file -->
-<link rel="stylesheet" href="airVvaccum.css">
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Physics Lab | Gravity and Drag Bench</title>
+  <link rel="stylesheet" href="airVvaccum.css">
+</head>
+<body>
+  <main class="lab-shell">
+    <section class="lab-panel intro-panel">
+      <p class="panel-kicker">Digital Laboratory // Free Fall Bench</p>
+      <div class="intro-copy">
+        <div>
+          <h1>Physics Lab: Gravity, Drag, and Free Fall</h1>
+          <p>
+            Compare two test bodies under the same planetary gravity. In a vacuum, both bodies
+            accelerate at the exact same rate. In air, this lab applies a simple drag coefficient
+            so higher-drag shapes fall more slowly.
+          </p>
+        </div>
+        <div class="equation-strip">
+          <span>Vacuum</span>
+          <strong>s = 1/2 g t^2</strong>
+          <strong>v = g t</strong>
+          <span>Air model</span>
+          <strong>a_eff = g * (1 - Cd)</strong>
+        </div>
+      </div>
+    </section>
 
-<div class="lab">
-  <!-- hidden heading for screen readers, doesnt show up visually -->
-  <h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">
-    Vacuum vs atmosphere physics lab: feather and stone fall comparison
-  </h2>
+    <section class="workspace-grid">
+      <section class="lab-panel control-panel">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Bench Controls</p>
+            <h2>Configure the experiment</h2>
+          </div>
+          <div class="status-badges">
+            <span class="status-chip" id="planetBadge">Planet: Earth</span>
+            <span class="status-chip accent" id="envTag">Vacuum</span>
+          </div>
+        </div>
 
-  <!-- title and description at the top -->
-  <div class="hero">
-    <div class="eyebrow"><span class="edot"></span>Physics Lab — Forces &amp; Motion</div>
-    <h1 class="htitle">Does mass affect <span>free fall?</span></h1>
-    <p class="hdesc">
-      Drop a <strong>feather</strong> and a <strong>stone</strong> inside sealed tubes.
-      Toggle between <strong>vacuum</strong> and <strong>atmosphere</strong> to see how
-      air resistance — not gravity — changes everything.
-    </p>
-  </div>
+        <div class="control-grid">
+          <label class="control-field">
+            <span class="field-label">Planetary gravity</span>
+            <select id="planetSelect" class="control-select">
+              <option value="earth">Earth (9.8 m/s^2)</option>
+              <option value="moon">Moon (1.6 m/s^2)</option>
+              <option value="mars">Mars (3.7 m/s^2)</option>
+              <option value="jupiter">Jupiter (24.8 m/s^2)</option>
+            </select>
+          </label>
 
-  <div class="divline"></div>
+          <div class="control-field toggle-field">
+            <span class="field-label">Environment</span>
+            <div class="toggle-cluster">
+              <span class="toggle-side">Vacuum</span>
+              <label class="toggle">
+                <input type="checkbox" id="airToggle" aria-label="Toggle air resistance">
+                <span class="toggle-track"></span>
+              </label>
+              <span class="toggle-side">Air</span>
+            </div>
+            <p class="field-note">Vacuum keeps acceleration identical for both bodies. Air enables each object's drag coefficient.</p>
+          </div>
+        </div>
 
-  <!-- drop + reset buttons and the air toggle switch -->
-  <div class="top-bar">
-    <button class="lbtn" onclick="dropBoth()">▼ Drop both</button>
-    <button class="lbtn rst" onclick="resetAll()">↺ Reset</button>
-    <div style="width:1px;height:28px;background:rgba(100,180,255,0.12)"></div>
-    <div class="tgl-row">
-      <span class="tgl-lbl">Air</span>
-      <label class="tgl">
-        <input type="checkbox" id="airToggle" onchange="toggleAir()">
-        <span class="tgl-t"></span>
-      </label>
-      <span class="etag tvac" id="envTag">Vacuum</span>
-    </div>
-  </div>
+        <div class="button-row">
+          <button class="action-btn primary" id="dropButton">Drop</button>
+          <button class="action-btn secondary" id="resetButton">Reset</button>
+        </div>
 
-  <!-- the two tubes next to each other -->
-  <div class="tubes-row">
+        <div class="bench-readout">
+          <div class="readout-card">
+            <span class="readout-label">Drop height</span>
+            <strong class="mono" id="heightBadge">12.00 m</strong>
+          </div>
+          <div class="readout-card">
+            <span class="readout-label">Gravity</span>
+            <strong class="mono" id="gravityBadge">9.80 m/s^2</strong>
+          </div>
+          <div class="readout-card">
+            <span class="readout-label">Model</span>
+            <strong class="mono" id="modelBadge">Ideal vacuum</strong>
+          </div>
+        </div>
+      </section>
 
-    <!-- feather tube -->
-    <div class="tube-wrap">
-      <div class="tube-col-lbl">Feather</div>
-      <div class="tube-outer" id="feather-tube">
-        <!-- ts1/ts2 are the glass shine strips, tglw is the inner glow overlay -->
-        <!-- air-particles gets the molecule dots injected by JS on load -->
-        <div class="ts1"></div>
-        <div class="ts2"></div>
-        <div class="tglw"></div>
-        <div id="air-particles" class="vp"></div>
+      <section class="lab-panel chamber-panel">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Test Chambers</p>
+            <h2>Drop two bodies side by side</h2>
+          </div>
+          <p class="panel-note">Both chambers start from the same height and use the selected planet's gravity.</p>
+        </div>
 
-        <!-- JS moves this div up and down to animate the fall -->
-        <div class="obj-wrap" id="feather-obj" style="top:14px;transform:translateX(-50%)">
-          <div style="position:relative;display:flex;align-items:center;justify-content:center">
-            <!-- feather SVG, the group rotates when it drifts sideways in atmosphere -->
-            <svg width="44" height="44" viewBox="0 0 44 44" id="feather-svg">
-              <g id="feather-g" transform="translate(22,22)">
-                <ellipse cx="0" cy="4" rx="7" ry="12" fill="#d4a843" opacity=".18"/>
-                <path d="M0,-18 C6,-10 10,0 8,10 C6,18 2,20 0,20 C-2,20 -6,18 -8,10 C-10,0 -6,-10 0,-18Z"
-                      fill="#f5e08a" stroke="#c8a830" stroke-width="0.5"/>
-                <line x1="0" y1="-17" x2="0"  y2="19"  stroke="#b8941a" stroke-width="0.8"/>
-                <line x1="0" y1="-12" x2="7"  y2="-6"  stroke="#c8a830" stroke-width="0.4" opacity=".7"/>
-                <line x1="0" y1="-12" x2="-7" y2="-6"  stroke="#c8a830" stroke-width="0.4" opacity=".7"/>
-                <line x1="0" y1="-6"  x2="8"  y2="0"   stroke="#c8a830" stroke-width="0.4" opacity=".65"/>
-                <line x1="0" y1="-6"  x2="-8" y2="0"   stroke="#c8a830" stroke-width="0.4" opacity=".65"/>
-                <line x1="0" y1="0"   x2="8"  y2="6"   stroke="#c8a830" stroke-width="0.4" opacity=".6"/>
-                <line x1="0" y1="0"   x2="-8" y2="6"   stroke="#c8a830" stroke-width="0.4" opacity=".6"/>
-                <line x1="0" y1="6"   x2="7"  y2="12"  stroke="#c8a830" stroke-width="0.4" opacity=".5"/>
-                <line x1="0" y1="6"   x2="-7" y2="12"  stroke="#c8a830" stroke-width="0.4" opacity=".5"/>
-                <ellipse cx="0" cy="19" rx="2" ry="1.5" fill="#a07820" opacity=".5"/>
-              </g>
-            </svg>
-
-            <!-- W = weight arrow, always visible, points down -->
-            <div class="fvec" id="fvec-grav-f" style="right:-28px;top:4px">
-              <svg width="14" height="28">
-                <defs>
-                  <marker id="ga" viewBox="0 0 8 8" refX="4" refY="6" markerWidth="5" markerHeight="5" orient="auto">
-                    <path d="M1 1L4 7L7 1" fill="none" stroke="#e05050" stroke-width="1.5" stroke-linejoin="round"/>
-                  </marker>
-                </defs>
-                <line x1="7" y1="0" x2="7" y2="24" stroke="#e05050" stroke-width="1.5" marker-end="url(#ga)"/>
-              </svg>
-              <span class="fvec-lbl" style="color:#e05050">W</span>
+        <div class="chamber-grid">
+          <article class="chamber-card">
+            <div class="chamber-top">
+              <div>
+                <p class="slot-label">Test Body A</p>
+                <label class="sr-only" for="objectASelect">Choose the first object</label>
+                <select id="objectASelect" class="control-select">
+                  <option value="leadBall">Lead Ball</option>
+                  <option value="basketball">Basketball</option>
+                  <option value="paperPlane" selected>Paper Plane</option>
+                  <option value="bowlingBall">Bowling Ball</option>
+                </select>
+              </div>
+              <div class="meta-stack">
+                <span class="meta-chip" id="objectADrag">Cd 0.42</span>
+                <span class="meta-chip accent" id="objectAName">Paper Plane</span>
+              </div>
             </div>
 
-            <!-- Fr = air resistance arrow, only shows in atmosphere mode, points up -->
-            <div class="fvec" id="fvec-drag-f" style="left:-28px;top:4px;opacity:0;transition:opacity .3s">
-              <span class="fvec-lbl" style="color:#50b8e8">Fr</span>
-              <svg id="drag-arrow-f" width="14" height="20">
-                <defs>
-                  <marker id="da" viewBox="0 0 8 8" refX="4" refY="1" markerWidth="5" markerHeight="5" orient="auto">
-                    <path d="M1 7L4 1L7 7" fill="none" stroke="#50b8e8" stroke-width="1.5" stroke-linejoin="round"/>
-                  </marker>
-                </defs>
-                <line x1="7" y1="22" x2="7" y2="4" stroke="#50b8e8" stroke-width="1.5" marker-end="url(#da)"/>
-              </svg>
+            <div class="drop-stage">
+              <div class="stage-scale" aria-hidden="true">
+                <span>12 m</span>
+                <span>9 m</span>
+                <span>6 m</span>
+                <span>3 m</span>
+                <span>0 m</span>
+              </div>
+              <div class="drop-tube" id="tubeA">
+                <div class="tube-grid"></div>
+                <div class="tube-atmosphere" id="tubeAtmosphereA"></div>
+                <div class="tube-floor"></div>
+                <div class="object-wrap" id="objectA">
+                  <div class="object-visual" id="objectAVisual"></div>
+                </div>
+                <div class="impact-flash" id="impactA"></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="chamber-card">
+            <div class="chamber-top">
+              <div>
+                <p class="slot-label">Test Body B</p>
+                <label class="sr-only" for="objectBSelect">Choose the second object</label>
+                <select id="objectBSelect" class="control-select">
+                  <option value="leadBall">Lead Ball</option>
+                  <option value="basketball">Basketball</option>
+                  <option value="paperPlane">Paper Plane</option>
+                  <option value="bowlingBall" selected>Bowling Ball</option>
+                </select>
+              </div>
+              <div class="meta-stack">
+                <span class="meta-chip" id="objectBDrag">Cd 0.06</span>
+                <span class="meta-chip accent" id="objectBName">Bowling Ball</span>
+              </div>
+            </div>
+
+            <div class="drop-stage">
+              <div class="stage-scale" aria-hidden="true">
+                <span>12 m</span>
+                <span>9 m</span>
+                <span>6 m</span>
+                <span>3 m</span>
+                <span>0 m</span>
+              </div>
+              <div class="drop-tube" id="tubeB">
+                <div class="tube-grid"></div>
+                <div class="tube-atmosphere" id="tubeAtmosphereB"></div>
+                <div class="tube-floor"></div>
+                <div class="object-wrap" id="objectB">
+                  <div class="object-visual" id="objectBVisual"></div>
+                </div>
+                <div class="impact-flash" id="impactB"></div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <aside class="lab-panel data-panel">
+        <div class="section-head compact">
+          <div>
+            <p class="section-label">Live Data</p>
+            <h2>Real-time telemetry</h2>
+          </div>
+          <div class="time-block">
+            <span>Elapsed</span>
+            <strong class="mono" id="timeReadout">0.00 s</strong>
+          </div>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-item">
+            <span>Planet</span>
+            <strong id="planetReadout">Earth</strong>
+          </div>
+          <div class="summary-item">
+            <span>Environment</span>
+            <strong id="environmentReadout">Vacuum</strong>
+          </div>
+          <div class="summary-item">
+            <span>g</span>
+            <strong class="mono" id="gravityReadout">9.80 m/s^2</strong>
+          </div>
+          <div class="summary-item">
+            <span>Height</span>
+            <strong class="mono">12.00 m</strong>
+          </div>
+        </div>
+
+        <div class="telemetry-card">
+          <div class="telemetry-head">
+            <span class="telemetry-tag">Body A</span>
+            <strong id="dataNameA">Paper Plane</strong>
+          </div>
+          <div class="telemetry-grid">
+            <div>
+              <span>Velocity</span>
+              <strong class="mono" id="velocityA">0.00 m/s</strong>
+            </div>
+            <div>
+              <span>Height</span>
+              <strong class="mono" id="heightA">12.00 m</strong>
+            </div>
+            <div>
+              <span>Net accel.</span>
+              <strong class="mono" id="accelA">9.80 m/s^2</strong>
+            </div>
+            <div>
+              <span>Status</span>
+              <strong class="mono" id="statusA">Ready</strong>
             </div>
           </div>
         </div>
 
-        <!-- impact burst when feather hits the floor -->
-        <div class="splash" id="feather-splash">
-          <svg width="36" height="20" viewBox="0 0 36 20"><g opacity=".9">
-            <line x1="18" y1="10" x2="4"  y2="2"  stroke="#f5e08a" stroke-width="1.5" stroke-linecap="round"/>
-            <line x1="18" y1="10" x2="32" y2="2"  stroke="#f5e08a" stroke-width="1.5" stroke-linecap="round"/>
-            <line x1="18" y1="10" x2="0"  y2="10" stroke="#f5e08a" stroke-width="1.5" stroke-linecap="round"/>
-            <line x1="18" y1="10" x2="36" y2="10" stroke="#f5e08a" stroke-width="1.5" stroke-linecap="round"/>
-            <line x1="18" y1="10" x2="8"  y2="18" stroke="#f5e08a" stroke-width="1.5" stroke-linecap="round"/>
-            <line x1="18" y1="10" x2="28" y2="18" stroke="#f5e08a" stroke-width="1.5" stroke-linecap="round"/>
-          </g></svg>
-        </div>
-
-        <div class="tfloor"></div>
-      </div>
-    </div>
-
-    <!-- stone tube - same structure but no drift, stone falls straight -->
-    <div class="tube-wrap">
-      <div class="tube-col-lbl">Stone</div>
-      <div class="tube-outer" id="stone-tube">
-        <div class="ts1"></div>
-        <div class="ts2"></div>
-        <div class="tglw"></div>
-
-        <!-- JS moves this one too -->
-        <div class="obj-wrap" id="stone-obj" style="top:14px;transform:translateX(-50%)">
-          <div style="position:relative;display:flex;align-items:center;justify-content:center">
-            <svg width="44" height="44" viewBox="0 0 44 44">
-              <g transform="translate(22,22)">
-                <ellipse cx="1" cy="2" rx="13" ry="11" fill="#5a6370" opacity=".25"/>
-                <polygon points="0,-13 10,-8 13,2 8,12 -4,13 -13,6 -12,-6 -5,-13"
-                         fill="#7a8795" stroke="#5a6878" stroke-width="0.6"/>
-                <polygon points="0,-13 10,-8 5,-3 -5,-5"   fill="#9aabb8" stroke="none" opacity=".6"/>
-                <polygon points="10,-8 13,2 7,0 5,-3"      fill="#6a7a88" stroke="none" opacity=".7"/>
-                <polygon points="-12,-6 -5,-13 -5,-5 -8,0" fill="#8a9aa8" stroke="none" opacity=".55"/>
-                <line x1="-5" y1="-5" x2="5" y2="-3" stroke="#4a5a68" stroke-width="0.5" opacity=".5"/>
-                <line x1="-8" y1="0"  x2="7" y2="0"  stroke="#4a5a68" stroke-width="0.4" opacity=".4"/>
-                <circle cx="-3" cy="5" r="1.2" fill="#4a5a68" opacity=".3"/>
-                <circle cx="5"  cy="8" r="0.8" fill="#4a5a68" opacity=".25"/>
-              </g>
-            </svg>
-
-            <!-- W arrow for the stone -->
-            <div class="fvec" id="fvec-grav-s" style="right:-28px;top:4px">
-              <svg width="14" height="28">
-                <defs>
-                  <marker id="gsa" viewBox="0 0 8 8" refX="4" refY="6" markerWidth="5" markerHeight="5" orient="auto">
-                    <path d="M1 1L4 7L7 1" fill="none" stroke="#e05050" stroke-width="1.5" stroke-linejoin="round"/>
-                  </marker>
-                </defs>
-                <line x1="7" y1="0" x2="7" y2="24" stroke="#e05050" stroke-width="1.5" marker-end="url(#gsa)"/>
-              </svg>
-              <span class="fvec-lbl" style="color:#e05050">W</span>
+        <div class="telemetry-card">
+          <div class="telemetry-head">
+            <span class="telemetry-tag">Body B</span>
+            <strong id="dataNameB">Bowling Ball</strong>
+          </div>
+          <div class="telemetry-grid">
+            <div>
+              <span>Velocity</span>
+              <strong class="mono" id="velocityB">0.00 m/s</strong>
             </div>
-
-            <!-- Fr arrow for the stone, way smaller than the feather one -->
-            <div class="fvec" id="fvec-drag-s" style="left:-28px;top:4px;opacity:0;transition:opacity .3s">
-              <span class="fvec-lbl" style="color:#50b8e8">Fr</span>
-              <svg id="drag-arrow-s" width="14" height="20">
-                <defs>
-                  <marker id="dsa" viewBox="0 0 8 8" refX="4" refY="1" markerWidth="5" markerHeight="5" orient="auto">
-                    <path d="M1 7L4 1L7 7" fill="none" stroke="#50b8e8" stroke-width="1.5" stroke-linejoin="round"/>
-                  </marker>
-                </defs>
-                <line x1="7" y1="22" x2="7" y2="4" stroke="#50b8e8" stroke-width="1.5" marker-end="url(#dsa)"/>
-              </svg>
+            <div>
+              <span>Height</span>
+              <strong class="mono" id="heightB">12.00 m</strong>
+            </div>
+            <div>
+              <span>Net accel.</span>
+              <strong class="mono" id="accelB">9.80 m/s^2</strong>
+            </div>
+            <div>
+              <span>Status</span>
+              <strong class="mono" id="statusB">Ready</strong>
             </div>
           </div>
         </div>
 
-        <!-- impact burst when stone hits the floor -->
-        <div class="splash" id="stone-splash">
-          <svg width="36" height="18" viewBox="0 0 36 18"><g opacity=".85">
-            <line x1="18" y1="9" x2="3"  y2="1"  stroke="#9aabb8" stroke-width="2"   stroke-linecap="round"/>
-            <line x1="18" y1="9" x2="33" y2="1"  stroke="#9aabb8" stroke-width="2"   stroke-linecap="round"/>
-            <line x1="18" y1="9" x2="1"  y2="9"  stroke="#9aabb8" stroke-width="1.5" stroke-linecap="round"/>
-            <line x1="18" y1="9" x2="35" y2="9"  stroke="#9aabb8" stroke-width="1.5" stroke-linecap="round"/>
-            <line x1="18" y1="9" x2="7"  y2="17" stroke="#9aabb8" stroke-width="2"   stroke-linecap="round"/>
-            <line x1="18" y1="9" x2="29" y2="17" stroke="#9aabb8" stroke-width="2"   stroke-linecap="round"/>
-          </g></svg>
+        <div class="insight-panel" id="insight">
+          Vacuum mode uses the exact same acceleration for both bodies, so only their appearance changes, not the kinematics.
         </div>
-
-        <div class="tfloor"></div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- key for the force arrows -->
-  <div class="legend">
-    <div class="li"><div class="ld" style="background:#e05050"></div>W = weight (gravity)</div>
-    <div class="li"><div class="ld" style="background:#50b8e8"></div>Fr = air resistance</div>
-  </div>
-
-  <!-- these numbers update live every frame while things are falling -->
-  <div class="stats-row">
-    <div class="sc">
-      <div class="sn">Feather speed</div>
-      <div class="sv" id="f-speed">0.00</div>
-      <div class="su">m/s (scaled)</div>
-    </div>
-    <div class="sc">
-      <div class="sn">Stone speed</div>
-      <div class="sv" id="s-speed">0.00</div>
-      <div class="su">m/s (scaled)</div>
-    </div>
-    <div class="sc">
-      <div class="sn">Feather drag</div>
-      <div class="sv" id="f-drag">0.00</div>
-      <div class="su">relative Fr</div>
-    </div>
-  </div>
-
-  <!-- explanation text, JS fills this in after both objects land -->
-  <div class="insight" id="insight"></div>
-</div>
-
-<!-- all the physics logic is in here -->
-<script src="airVvaccum.js"></script>
+      </aside>
+    </section>
+  </main>
+  <script src="airVvaccum.js"></script>
+</body>
+</html>
