@@ -2,11 +2,18 @@
 
 ## About the Project
 
-This is a physics based web simulation project where we can compare how objects fall in **air vs vacuum**.
+This project is based on the concept of gravity and air resistance.
 
-In normal thinking many people think heavier objects fall faster, but actually in vacuum all objects fall same speed. So this project is made to visualize that concept clearly.
+In vacuum, there is no air resistance, so all objects fall with same acceleration (g), no matter their mass. That means a feather and a stone will hit the ground at same time.
 
-This project also allow to test different planets gravity like Earth, Moon, Mars and Jupiter which makes it more interesting.
+In air, objects experience drag force. Because of this, lighter or high-drag objects (like feather) fall slower compared to dense objects (like stone).
+
+In this simulation, a simplified model is used:
+a_eff = g * (1 - Cd)
+
+Where Cd represents drag coefficient. Higher Cd means more air resistance and slower fall.
+
+This is not fully realistic physics, but it helps to clearly understand the difference between air and vacuum behavior.
 
 ---
 
